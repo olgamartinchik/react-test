@@ -1,38 +1,41 @@
-import { useEffect, useMemo, useState } from 'react';
-import { baseURL } from '../helpers/api.helpers';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 import { debounce } from '../helpers/debounce';
 type DataType = {
-  domains: Array<string>;
-  country: string;
-  alpha_two_code: string;
-  web_pages: Array<string>;
-  name: string;
-  'state-province': null | string;
+  userId: number;
+  id: number;
+  title: string;
+  body: string;
 };
-const PAGE_SIZE = 5;
 
 export const useFetchData = () => {
-  const [data, setData] = useState<string[] | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  const [data, setData] = useState<DataType[] | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const fetchData = async (): Promise<DataType[]> => {
-    const request = await fetch(baseURL + 'Kazakhstan');
+  const fetchData = async (
+    signal: AbortSignal,
+    page: number
+  ): Promise<DataType[]> => {
+    const request = await fetch(
+      `https://jsonplaceholder.typicode.com/posts?_page=${page}&_limit=5`,
+      {
+        signal,
+        method: 'GET',
+      }
+    );
     if (!request.ok) {
       throw new Error('Network response was not ok');
     }
-    return request.json();
+
+    const result = await request.json();
+
+    return result;
   };
 
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    const endIndex = startIndex + PAGE_SIZE;
-    return data?.slice(startIndex, endIndex);
-  }, [data, currentPage]);
-
   const setNextPage = () => {
-    const totalPages = Math.ceil(data?.length! / PAGE_SIZE);
-
-    setCurrentPage((prev) => (totalPages === prev ? prev : prev + 1));
+    setCurrentPage((prev) => prev + 1);
   };
 
   const setPrevPage = () => {
@@ -41,23 +44,37 @@ export const useFetchData = () => {
 
   const delayFetch: any = useMemo(
     () =>
-      debounce(() => {
-        fetchData()
+      debounce((page: number) => {
+        if (controllerRef.current) {
+          controllerRef.current.abort();
+        }
+
+        controllerRef.current = new AbortController();
+
+        fetchData(controllerRef.current.signal, page)
           .then((value: DataType[]) => {
-            const names = value.map((item: DataType) => item.name);
-            setData(names);
+            setData(value);
+            setLoading(false);
           })
           .catch((e) => {
-            console.error('Error:', e);
+            console.error(e);
           });
-      }, 5000),
+      }, 2000),
     []
   );
 
   useEffect(() => {
-    setData(null);
-    setCurrentPage(1);
-    delayFetch();
-  }, []);
-  return { data, paginatedData, currentPage, setNextPage, setPrevPage };
+    setLoading(true);
+    delayFetch(currentPage);
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, [currentPage]);
+  return {
+    loading,
+    data,
+    currentPage,
+    setNextPage,
+    setPrevPage,
+  };
 };

@@ -13,9 +13,11 @@ export const Pagination: FC<PaginationType> = ({
 }) => {
   return (
     <>
-      <Button text={'Prev'} handlerButton={setPrevPage} />
+      <Button onClick={setPrevPage} disabled={page === 1}>
+        Prev
+      </Button>
       <span>{page}</span>
-      <Button text={'Next'} handlerButton={setNextPage} />
+      <Button onClick={setNextPage}>Next</Button>
     </>
   );
 };

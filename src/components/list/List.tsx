@@ -3,18 +3,22 @@ import { Item } from '../item/Item';
 import { Pagination } from '../pagination/Pagination';
 
 export const List = () => {
-  const { data, paginatedData, currentPage, setNextPage, setPrevPage } =
+  const { data, loading, currentPage, setNextPage, setPrevPage } =
     useFetchData();
 
   return (
     <>
-      <ul>
-        {data ? (
-          paginatedData?.map((item) => <Item key={item} name={item} />)
-        ) : (
-          <p>Loading...</p>
-        )}
-      </ul>
+      {!loading ? (
+        <>
+          <ul>
+            {data?.map((item) => (
+              <Item key={item.id} name={item.title} />
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p>Loading...</p>
+      )}
       <Pagination
         page={currentPage}
         setNextPage={setNextPage}
